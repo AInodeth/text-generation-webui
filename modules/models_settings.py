@@ -34,11 +34,7 @@ def get_model_metadata(model):
                 model_settings[k] = settings[pat][k]
 
     path = Path(f'{shared.args.model_dir}/{model}/config.json')
-    if path.exists():
-        hf_metadata = json.loads(open(path, 'r').read())
-    else:
-        hf_metadata = None
-
+    hf_metadata = json.loads(open(path, 'r').read()) if path.exists() else None
     if 'loader' not in model_settings:
         if hf_metadata is not None and 'quip_params' in hf_metadata:
             model_settings['loader'] = 'QuIP#'
@@ -52,11 +48,7 @@ def get_model_metadata(model):
     # GGUF metadata
     if model_settings['loader'] in ['llama.cpp', 'llamacpp_HF', 'ctransformers']:
         path = Path(f'{shared.args.model_dir}/{model}')
-        if path.is_file():
-            model_file = path
-        else:
-            model_file = list(path.glob('*.gguf'))[0]
-
+        model_file = path if path.is_file() else list(path.glob('*.gguf'))[0]
         metadata = metadata_gguf.load_metadata(model_file)
         if 'llama.context_length' in metadata:
             model_settings['n_ctx'] = metadata['llama.context_length']
@@ -68,8 +60,8 @@ def get_model_metadata(model):
             template = metadata['tokenizer.chat_template']
             eos_token = metadata['tokenizer.ggml.tokens'][metadata['tokenizer.ggml.eos_token_id']]
             bos_token = metadata['tokenizer.ggml.tokens'][metadata['tokenizer.ggml.bos_token_id']]
-            template = template.replace('eos_token', "'{}'".format(eos_token))
-            template = template.replace('bos_token', "'{}'".format(bos_token))
+            template = template.replace('eos_token', f"'{eos_token}'")
+            template = template.replace('bos_token', f"'{bos_token}'")
 
             template = re.sub(r'raise_exception\([^)]*\)', "''", template)
             model_settings['instruction_template'] = 'Custom (obtained from model metadata)'
@@ -121,7 +113,7 @@ def get_model_metadata(model):
                     if type(value) is dict:
                         value = value['content']
 
-                    template = template.replace(k, "'{}'".format(value))
+                    template = template.replace(k, f"'{value}'")
 
             template = re.sub(r'raise_exception\([^)]*\)', "''", template)
             model_settings['instruction_template'] = 'Custom (obtained from model metadata)'
@@ -207,12 +199,7 @@ def update_model_parameters(state, initial=False):
 
         setattr(shared.args, element, value)
 
-    found_positive = False
-    for i in gpu_memories:
-        if i > 0:
-            found_positive = True
-            break
-
+    found_positive = any(i > 0 for i in gpu_memories)
     if not (initial and vars(shared.args)['gpu_memory'] != vars(shared.args_defaults)['gpu_memory']):
         if found_positive:
             shared.args.gpu_memory = [f"{i}MiB" for i in gpu_memories]
@@ -229,7 +216,20 @@ def apply_model_settings_to_state(model, state):
         loader = model_settings.pop('loader')
 
         # If the user is using an alternative loader for the same model type, let them keep using it
-        if not (loader == 'AutoGPTQ' and state['loader'] in ['GPTQ-for-LLaMa', 'ExLlama', 'ExLlama_HF', 'ExLlamav2', 'ExLlamav2_HF']) and not (loader == 'llama.cpp' and state['loader'] in ['llamacpp_HF', 'ctransformers']):
+        if (
+            loader != 'AutoGPTQ'
+            or state['loader']
+            not in [
+                'GPTQ-for-LLaMa',
+                'ExLlama',
+                'ExLlama_HF',
+                'ExLlamav2',
+                'ExLlamav2_HF',
+            ]
+        ) and (
+            loader != 'llama.cpp'
+            or state['loader'] not in ['llamacpp_HF', 'ctransformers']
+        ):
             state['loader'] = loader
 
     for k in model_settings:
@@ -251,12 +251,8 @@ def save_model_settings(model, state):
         return
 
     with Path(f'{shared.args.model_dir}/config-user.yaml') as p:
-        if p.exists():
-            user_config = yaml.safe_load(open(p, 'r').read())
-        else:
-            user_config = {}
-
-        model_regex = model + '$'  # For exact matches
+        user_config = yaml.safe_load(open(p, 'r').read()) if p.exists() else {}
+        model_regex = f'{model}$'
         if model_regex not in user_config:
             user_config[model_regex] = {}
 

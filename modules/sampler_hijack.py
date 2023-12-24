@@ -45,7 +45,7 @@ class MinPLogitsWarper(LogitsWarper):
 
 class TailFreeLogitsWarper(LogitsWarper):
     def __init__(self, tfs: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
-        tfs = float(tfs)
+        tfs = tfs
         if tfs < 0 or tfs > 1.0:
             raise ValueError(f"`tfs` has to be a float >= 0 and <= 1, but is {tfs}")
         self.tfs = tfs
@@ -85,7 +85,7 @@ class TailFreeLogitsWarper(LogitsWarper):
 
 class TopALogitsWarper(LogitsWarper):
     def __init__(self, top_a: float, filter_value: float = -float("Inf"), min_tokens_to_keep: int = 1):
-        top_a = float(top_a)
+        top_a = top_a
         if top_a < 0 or top_a > 1.0:
             raise ValueError(f"`top_a` has to be a float >= 0 and <= 1, but is {top_a}")
         self.top_a = top_a
@@ -129,10 +129,7 @@ class MirostatLogitsWarper(LogitsWarper):
         # Truncate the words with surprise values greater than mu
         for i, candidate in enumerate(prob_original):
             if candidate > 0 and -math.log2(candidate) > self.mu:
-                if (i == 0):
-                    sorted_logits = sorted_logits[:1]
-                else:
-                    sorted_logits = sorted_logits[:i]
+                sorted_logits = sorted_logits[:1] if (i == 0) else sorted_logits[:i]
                 break
 
         # Normalize the probabilities of the remaining words
@@ -173,7 +170,7 @@ class RepetitionPenaltyLogitsProcessorWithRange(LogitsProcessor):
     '''
 
     def __init__(self, penalty: float, presence_penalty: float, frequency_penalty: float, _range: int):
-        if not (penalty > 0):
+        if penalty <= 0:
             raise ValueError(f"`penalty` has to be strictly positive, but is {penalty}")
 
         self.penalty = penalty
@@ -230,12 +227,14 @@ def get_logits_warper_patch(self, generation_config):
 
     warpers += warpers_to_add
     if generation_config.temperature_last:
-        temperature_idx = None
-        for i in range(len(warpers)):
-            if warpers[i].__class__.__name__ == 'TemperatureLogitsWarper':
-                temperature_idx = i
-                break
-
+        temperature_idx = next(
+            (
+                i
+                for i in range(len(warpers))
+                if warpers[i].__class__.__name__ == 'TemperatureLogitsWarper'
+            ),
+            None,
+        )
         if temperature_idx is not None:
             warpers = warpers[:temperature_idx] + warpers[temperature_idx + 1:] + [warpers[temperature_idx]]
             warpers = LogitsProcessorList(warpers)

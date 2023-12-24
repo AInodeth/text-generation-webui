@@ -39,7 +39,7 @@ class ModelDownloader:
         if model[-1] == '/':
             model = model[:-1]
 
-        if model.startswith(base + '/'):
+        if model.startswith(f'{base}/'):
             model = model[len(base) + 1:]
 
         model_parts = model.split(":")
@@ -136,14 +136,12 @@ class ModelDownloader:
                 if 'q4_k_m' in links[i].lower():
                     has_q4km = True
 
-            if has_q4km:
-                for i in range(len(classifications) - 1, -1, -1):
+            for i in range(len(classifications) - 1, -1, -1):
+                if has_q4km:
                     if 'q4_k_m' not in links[i].lower():
                         links.pop(i)
-            else:
-                for i in range(len(classifications) - 1, -1, -1):
-                    if links[i].lower().endswith('.gguf'):
-                        links.pop(i)
+                elif links[i].lower().endswith('.gguf'):
+                    links.pop(i)
 
         is_llamacpp = has_gguf and specific_file is not None
         return links, sha256, is_lora, is_llamacpp
@@ -219,11 +217,12 @@ class ModelDownloader:
 
         if not is_llamacpp:
             metadata = f'url: https://huggingface.co/{model}\n' \
-                       f'branch: {branch}\n' \
-                       f'download date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n'
+                           f'branch: {branch}\n' \
+                           f'download date: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}\n'
 
-            sha256_str = '\n'.join([f'    {item[1]} {item[0]}' for item in sha256])
-            if sha256_str:
+            if sha256_str := '\n'.join(
+                [f'    {item[1]} {item[0]}' for item in sha256]
+            ):
                 metadata += f'sha256sum:\n{sha256_str}'
 
             metadata += '\n'
