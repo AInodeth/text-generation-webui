@@ -114,7 +114,7 @@ def ui():
                 with gr.Row():
                     with gr.Column(scale=5):
                         lora_name = gr.Textbox(label='Name', info='The name of your new LoRA file')
-    
+
                     with gr.Column():
                         always_override = gr.Checkbox(label='Override Existing Files', value=False, info='If the name is the same, checking will replace the existing file, and unchecking will load and continue from it (the rank must be the same).', elem_classes=['no-background'])
 
@@ -132,7 +132,7 @@ def ui():
                         epochs = gr.Number(label='Epochs', value=3, info='Number of times every entry in the dataset should be fed into training. So 1 means feed each item in once, 5 means feed it in five times, etc.')
                         learning_rate = gr.Textbox(label='Learning Rate', value='3e-4', info='In scientific notation. 3e-4 is a good starting base point. 1e-2 is extremely high, 1e-6 is extremely low.')
                         lr_scheduler_type = gr.Dropdown(label='LR Scheduler', value='linear', choices=['linear', 'constant', 'constant_with_warmup', 'cosine', 'cosine_with_restarts', 'polynomial', 'inverse_sqrt', 'FP_low_epoch_annealing', 'FP_half_time_annealing','FP_raise_fall_creative'], info='Learning rate scheduler - defines how the learning rate changes over time. Custom schedulers: FP_low_epoch_annealing, FP_half_time_annealing, FP_raise_fall_creative (see README)', elem_classes=['slim-dropdown'])
-                        
+
                 with gr.Accordion(label='Checkpoints', open=True):
                     with gr.Row():
                         with gr.Column():
@@ -157,7 +157,7 @@ def ui():
                             add_bos_token = gr.Checkbox(label='Add BOS token', value=True, info="Adds BOS token for each dataset item")
                             add_eos_token = gr.Checkbox(label='Add EOS token', value=False, info="Adds EOS token for each dataset item")
                             add_eos_token_type = gr.Dropdown(label='EOS placement (Text file)', choices=['Every Block', 'Hard Cut Blocks Only'], value='Every Block', info='', allow_custom_value = False)
-                            
+
                             higher_rank_limit = gr.Checkbox(label='Enable higher ranks', value=False, info='If checked, changes Rank/Alpha slider above to go much higher. This will not work without a datacenter-class GPU.')
                             report_to = gr.Radio(label="Save detailed logs with", value="None", choices=["None", "wandb", "tensorboard"], interactive=True)
                 # for future            
@@ -168,7 +168,7 @@ def ui():
                 #    ds_loss_rolling_window = gr.Number(label='Loss rolling average', value='4', info='Calculate loss by averaging last x numbers to avoid jumps and noise')
                 #    ds_epochs_to_ramp = gr.Slider(label='Ramp down ratio', minimum=0.0, maximum=2.0, step=0.1, value=1.00, info='How long the ramp down will last relative to ellapsed steps (before trigger)')
                 #    gr.Markdown('These are settings for FP_dynamic_loss_trigger scheduler. The scheduler will do warm up, then hold constant untill a loss falls under Trigger Loss, then it will commence linear ramp down schedule and stop. The length of ramp down is set by Ramp down ratio where (ramp down steps) = ratio * (elapsed steps). (The time to completition shown will be very high untill ramp down is triggered.)')
-                        
+
 
             with gr.Column():
                 with gr.Tab(label='Formatted Dataset'):
@@ -228,7 +228,7 @@ def ui():
                     with gr.Row():
                         # show_actions_button = False - we use old gradio
                         plot_graph = gr.LinePlot(x="epoch", y="value", title="Loss Metrics", overlay_point=True, tooltip=["epoch", "value"], x_lim=[0, 1], y_lim=[0, 3.5], width=500, height=250) 
- 
+
                 output = gr.Markdown(value="Ready")
 
     with gr.Tab('Perplexity evaluation', elem_id='evaluate-tab'):
@@ -267,7 +267,7 @@ def ui():
 
         return grad_accumulation_val
 
-    
+
     copy_from.change(partial(do_copy_params, all_params= all_params), copy_from, all_params).then(fix_old_version,[batch_size,micro_batch_size, grad_accumulation],grad_accumulation)
     start_button.click(do_train, all_params, [output,plot_graph])
     stop_button.click(do_interrupt, None, None, queue=False)
@@ -306,8 +306,8 @@ def ui():
         if shared.tokenizer is None:
             yield "Tokenizer is not available. Please Load some Model first."
             return
-        
-        
+
+
         if raw_text_file not in ['None', '']:
             logger.info("Loading Text file...")
             fullpath = clean_path('training/datasets', f'{raw_text_file}')
@@ -329,8 +329,8 @@ def ui():
                 except:
                     yield f"{raw_text_file}.txt doesn't seem to exsist anymore... check your training/datasets folder"
                     return
-            
- 
+
+
             if min_chars<0:
                 min_chars = 0
 
@@ -343,13 +343,13 @@ def ui():
             total_blocks = len(text_chunks)
             result = f"Text: ({raw_text_file}.txt) has {total_blocks} blocks (Block Size {cutoff_len} tokens)"
             del text_chunks
-       
+
         else:
-            if dataset in ['None', '']:
+            if dataset in {'None', ''}:
                 yield "Select dataset or text file."
                 return 
 
-            if format in ['None', '']:
+            if format in {'None', ''}:
                 yield "Select format choice for dataset."
                 return
 
@@ -358,7 +358,11 @@ def ui():
 
             def generate_prompt(data_point: dict[str, str]):
                 for options, data in format_data.items():
-                    if set(options.split(',')) == set(x[0] for x in data_point.items() if (type(x[1]) is str and len(x[1].strip()) > 0)):
+                    if set(options.split(',')) == {
+                        x[0]
+                        for x in data_point.items()
+                        if (type(x[1]) is str and len(x[1].strip()) > 0)
+                    }:
                         for key, val in data_point.items():
                             if type(val) is str:
                                 data = data.replace(f'%{key}%', val)
@@ -382,7 +386,7 @@ def ui():
 
             logger.info("Loading JSON datasets...")
             data = load_dataset("json", data_files=clean_path('training/datasets', f'{dataset}.json'))
-            
+
             data_keys = [] 
 
             if data:
@@ -397,14 +401,14 @@ def ui():
 
             result = f"Dataset: ({dataset}.json) has {total_blocks} blocks @ length = {cutoff_len} tokens\n(Keys: {data_keys} - Format: {format}.json): "
 
-            #for options, data in format_data.items():
-            #    format_keys = options.split(',')
-            #    result += f"{format_keys}, "
-            #result = result.rstrip()    
-            #result = result.rstrip(',')  
+                    #for options, data in format_data.items():
+                    #    format_keys = options.split(',')
+                    #    result += f"{format_keys}, "
+                    #result = result.rstrip()    
+                    #result = result.rstrip(',')  
 
         if total_blocks>0:
-            number_ofSteps = int(math.ceil(total_blocks / micro_batch_size) * epochs) 
+            number_ofSteps = int(math.ceil(total_blocks / micro_batch_size) * epochs)
             num_stepsPer_epoch = int(math.ceil(number_ofSteps/epochs))
             min_warm = math.ceil(100 / grad_accumulation)
 
@@ -415,20 +419,20 @@ def ui():
             save_each_n_max = int(math.ceil(number_ofSteps/5))
             gradient_accumulation_max = int(total_blocks)//micro_batch_size
 
- 
+
             result += f"\n[Batch Size: {micro_batch_size}, Epochs: {epochs}, Gradient Accumulation: {grad_accumulation}]\n"
             result += f"Total number of steps: {number_ofSteps}\n"
             result += f"Steps per each Epoch: {num_stepsPer_epoch}\n"
             result += f"Suggestions:\n"
-            result += f"Checkpoints: Save every {save_each_n_min} - {save_each_n_max} steps (Current: {int(save_steps)})\n"
-            result += f"Warmup steps: {warmup_steps_suggest} (Current: {int(warmup_steps)})"
+            result += f"Checkpoints: Save every {save_each_n_min} - {save_each_n_max} steps (Current: {save_steps})\n"
+            result += f"Warmup steps: {warmup_steps_suggest} (Current: {warmup_steps})"
             if gradient_accumulation_max < grad_accumulation: 
                 result += f"\n\nWARNING: Gradient Accumulation {grad_accumulation} is too high: It should be below {gradient_accumulation_max}"
 
 
         yield result
         return
-    
+
     check_dataset_btn.click(check_dataset, dataset_calc_params ,check_dataset_txt)
 
     # Evaluation events. For some reason, the interrupt event
@@ -449,10 +453,10 @@ def ui():
 
     def reload_lora():
         return gr.Dropdown.update(choices=get_available_loras_local(non_serialized_params['Lora_sortedByTime']))
- 
+
     # nonserialized items
 
-    sort_byTime.change(lambda x: non_serialized_params.update({"Lora_sortedByTime": x}), sort_byTime, None).then(reload_lora,None,copy_from) 
+    sort_byTime.change(lambda x: non_serialized_params.update({"Lora_sortedByTime": x}), sort_byTime, None).then(reload_lora,None,copy_from)
     #debug_slicer.change(lambda x: non_serialized_params.update({"debug_slicer": x}), debug_slicer, None)
 
     def update_dataset():
@@ -465,7 +469,14 @@ def get_datasets(path: str, ext: str):
     #if ext == "txt":
     #    return ['None'] + sorted(set([k.stem for k in list(Path(path).glob('txt')) + list(Path(path).glob('*/')) if k.stem != 'put-trainer-datasets-here']), key=natural_keys)
 
-    return ['None'] + sorted(set([k.stem for k in Path(path).glob(f'*.{ext}') if k.stem != 'put-trainer-datasets-here']), key=natural_keys)
+    return ['None'] + sorted(
+        {
+            k.stem
+            for k in Path(path).glob(f'*.{ext}')
+            if k.stem != 'put-trainer-datasets-here'
+        },
+        key=natural_keys,
+    )
 
 def do_interrupt():
     global WANT_INTERRUPT
@@ -484,7 +495,7 @@ def do_copy_params(lora_name: str, all_params):
     else:
         params = {}        
 
-    result = list()
+    result = []
     for i in range(0, len(PARAMETERS)):
         key = PARAMETERS[i]
         if key in params:
@@ -503,10 +514,7 @@ def change_rank_limit(use_higher_ranks: bool):
 def clean_path(base_path: str, path: str):
     """Strips unusual symbols and forcibly builds a path as relative to the intended directory."""
     path = path.replace('\\', '/').replace('..', '_')
-    if base_path is None:
-        return path
-
-    return f'{Path(base_path).absolute()}/{path}'
+    return path if base_path is None else f'{Path(base_path).absolute()}/{path}'
 
 
 def backup_adapter(input_folder):
@@ -535,7 +543,7 @@ def backup_adapter(input_folder):
                 if file.is_file():
                     shutil.copy2(file, subfolder_path)
     except Exception as e:
-        print("An error occurred in backup_adapter:", str(e))
+        print("An error occurred in backup_adapter:", e)
 
 
 def calc_trainable_parameters(model):
